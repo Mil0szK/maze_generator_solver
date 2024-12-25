@@ -38,7 +38,12 @@ def test_grid_creation():
     assert maze.start != maze.end, "Start and end points should not be the same."
 
 
+def test_neighbours():
+    width, height = 10, 10
+    maze = Maze(width, height)
+    maze.grid_creation()
 
+    assert maze.neighbors(3, 3) == [(3, 2), (3, 4), (2, 3), (4, 3)], "Incorrect neighbours for cell (3, 3)."
 
 if __name__ == "__main__":
     pytest.main()
