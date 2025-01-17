@@ -1,7 +1,7 @@
 ## Maze Generator and Solver
 
 # Overview
-This project is a maze generator and solver. The maze is generated using a recursive backtracking algorithm.
+This project is a maze generator and solver.
 The maze is created using Prim's Algorithm. The maze is displayed using a matplotlib library.
 Visualization contains start and end points, visited cells, and the path from start to end.
 
