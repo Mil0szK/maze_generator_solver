@@ -2,6 +2,7 @@ import random
 from dataclasses import dataclass
 from enum import Enum
 import matplotlib.pyplot as plt
+import math
 
 
 class CellState(Enum):
@@ -24,9 +25,6 @@ class Maze:
         self.end = None
 
     def grid_creation(self):
-        """Initialize the grid with walls and carve passages dynamically."""
-
-        print(self.start, self.end)
 
         initial = (random.randint(1, self.width - 2), random.randint(1, self.height - 2))
         self.grid[initial[1]][initial[0]].state = CellState.PASSAGE
@@ -64,26 +62,44 @@ class Maze:
                     ):
                         frontier.append(neighbor)
 
-    def start_end(self):
-        """Set the start and end points of the maze."""
+    def start_end(self, min_distance = 15):
+        edges_passages = []
 
-        edges_passages = [(x, y) for y in range(self.height) for x in range(self.width)
-                          if self.grid[y][x].state == CellState.PASSAGE and (x==1 or x==self.width-2
-                                                                             or y==1 or y==self.height-2)]
-        longest_distance = 0
-        best_pair = None
-        for i, start in enumerate(edges_passages):
-            for end in edges_passages[i+1:]:
-                distance = (end[0] - start[0])**2 + (end[1] - start[1])**2  # Squared Euclidean distance
-                if distance > longest_distance:
-                    longest_distance = distance
-                    best_pair = (start, end)
+        # Loop through the grid to find edge passages
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.grid[y][x].state == CellState.PASSAGE:
+                    if (x == 0 or x == self.width - 1 or
+                            y == 0 or y == self.height - 1 or
+                            x > 0 and self.grid[y][x - 1].state != CellState.PASSAGE or
+                            x < self.width - 1 and self.grid[y][x + 1].state != CellState.PASSAGE or
+                            y > 0 and self.grid[y - 1][x].state != CellState.PASSAGE or
+                            y < self.height - 1 and self.grid[y + 1][x].state != CellState.PASSAGE):
+                        edges_passages.append((x, y))
 
-        if best_pair:
-            self.start, self.end = best_pair
+        print(edges_passages)
+
+        if len(edges_passages) >= 2:
+            valid_pair_found = False
+            attempts = 0
+            max_attempts = 100
+
+            while not valid_pair_found and attempts < max_attempts:
+                start, end = random.sample(edges_passages, 2)
+                distance = math.sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
+
+                if distance >= min_distance:
+                    valid_pair_found = True
+                    self.start, self.end = start, end
+                attempts += 1
+
+            # If no valid pair found within max_attempts, set to None
+            if not valid_pair_found:
+                self.start, self.end = None, None
+        else:
+            self.start, self.end = None, None
 
     def neighbors(self, x, y, step=1):
-        """Get valid neighbors of a cell."""
         directions = [(0, -step), (0, step), (-step, 0), (step, 0)]
         return [
             (x + dx, y + dy)
@@ -92,19 +108,16 @@ class Maze:
         ]
 
     def carve_path(self, cell1, cell2):
-        """Carve a passage between two cells."""
         x1, y1 = cell1
         x2, y2 = cell2
         mid_x, mid_y = (x1 + x2) // 2, (y1 + y2) // 2
         self.grid[mid_y][mid_x].state = CellState.PASSAGE
 
     def display_grid(self):
-        """Print the grid with a visual representation."""
         for row in self.grid:
             print("".join(" " if cell.state == CellState.PASSAGE else "#" for cell in row))
 
-    def draw_maze(self, path=None):
-        """Visualize the maze using matplotlib, with optional path."""
+    def draw_maze(self, path=None, visited=None):
         # Create a grid for visualization
         maze_array = [[cell.state.value for cell in row] for row in self.grid]
 
@@ -113,11 +126,19 @@ class Maze:
         # Display the maze using a binary colormap
         ax.imshow(maze_array, cmap=plt.cm.binary.reversed(), interpolation='nearest')
 
+        # Highlight visited cells in yellow
+        visited_label_added = False
+        if visited is not None:
+            for cell in visited:
+                ax.scatter(cell[0], cell[1], color='yellow', s=50,
+                           label="Visited" if not visited_label_added else None)
+                visited_label_added = True
+
         # Highlight the start and end points
         if self.start:
-            ax.scatter(self.start[0], self.start[1], color='green', s=100, label="Start")  # Green for start
+            ax.scatter(self.start[0], self.start[1], color='green', s=100, label="Start")
         if self.end:
-            ax.scatter(self.end[0], self.end[1], color='blue', s=100, label="End")  # Blue for end
+            ax.scatter(self.end[0], self.end[1], color='blue', s=100, label="End")
 
         # Plot the solution path if provided
         if path is not None:
@@ -130,12 +151,3 @@ class Maze:
         ax.legend(loc='upper right')
         plt.show()
 
-
-
-if __name__ == "__main__":
-    maze = Maze(51, 51)
-    maze.grid_creation()
-    maze.start_end()
-    print(f"Start: {maze.start}, End: {maze.end}")
-    # maze.display_grid()
-    maze.draw_maze()
